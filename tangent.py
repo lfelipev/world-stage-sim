@@ -1,12 +1,13 @@
 #!/usr/bin/env python  
 import rospy
 import numpy as np
+import tf
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
 
 X = 0
-Y = 0
+Y = 1
 A = 2
 MAXERR = 0.01
 MAXDST = 5.0
@@ -30,17 +31,10 @@ class Control():
         self.laser = np.zeros(180)
         self.estado = 0
         self.contador = 0
-        self.ar = 0.0
-        self.fa = 0.0
-        self.da = 0.0
-        self.mx = 0.0
-        self.my = 0.0
-        self.x0 = 0.0
-        self.y0 = 0.0
         self.sinal1 = 0
         self.obstaculo = 0
         self.minpoint = INF
-
+        self.ar = 0.0
         self.subPose = rospy.Subscriber('odom', Odometry, self.odomCallback)
         self.subSpeed = rospy.Subscriber('cmd_vel', Twist, self.speedCallback)
         self.laserScan = rospy.Subscriber('base_scan', LaserScan, self.scanCallback)
@@ -59,9 +53,12 @@ class Control():
             count = count + 1
 
     def odomCallback(self, msg):
-        self.ps[X] = msg.pose.pose.position.x
-        self.ps[Y] = msg.pose.pose.position.y
-        self.ps[A] = 2 * np.arccos(msg.pose.pose.orientation.w) * np.sign(msg.pose.pose.orientation.z)
+        self.ps[X] = self.solvePose(6, msg.pose.pose.position.x)
+        self.ps[Y] = self.solvePose(10, msg.pose.pose.position.y)
+        quat = [msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, 
+        msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
+        (_, _, yaw) = tf.transformations.euler_from_quaternion(quat)
+        self.ps[A] = self.solveAngle(0, yaw)
 
     def speedCallback(self, msg):
         self.vel_rec[X] = msg.linear.x
@@ -77,8 +74,8 @@ class Control():
         dx = xr - self.ps[X]
         dy = yr - self.ps[Y]
 
-        ca = np.sqrt(dx*dy)
-        co = np.sqrt(dy*dx)
+        ca = np.sqrt(dx*dx)
+        co = np.sqrt(dy*dy)
         hy = np.sqrt((co*co)+(ca*ca))
 
         # defines the obstacle point more approximate
@@ -105,13 +102,15 @@ class Control():
         
         self.vel[X] = 2.0*np.sqrt(fx*fx+fy*fy)
         sin = co/hy
-        ar = np.arcsin(sin) * 180/ np.pi
+        self.ar = np.arcsin(sin) * 180/ np.pi
+        
 
         if(xr < self.ps[X]):
             self.ar = 180 - self.ar
         if(yr < self.ps[Y]):
            self.ar = -self.ar
         self.da = self.ar - self.ps[A]
+
 
         if(abs(self.ps[A]) > 90 and abs(self.ar) > 90):
             if((self.ar > 0 and self.ps[A] < 0) or (self.ar < 0 and self.ps[A] > 0)):
@@ -164,7 +163,7 @@ def main():
 
 
     xr = 5.0
-    yr = 5.0
+    yr = 10.0
     rate = rospy.Rate(10) # 10 Hz
     c = Control()
     vel = Twist()

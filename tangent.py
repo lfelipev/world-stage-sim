@@ -162,8 +162,8 @@ def main():
     rospy.init_node('bug_tan')
 
 
-    xr = 5.0
-    yr = 10.0
+    xr = 15.0
+    yr = 32.0
     rate = rospy.Rate(10) # 10 Hz
     c = Control()
     vel = Twist()

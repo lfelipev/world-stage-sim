@@ -30,8 +30,13 @@ class Control():
         self.laser = np.zeros(180)
         self.estado = 0
         self.contador = 0
-        self.da = 0.0
+        self.ar = 0.0
         self.fa = 0.0
+        self.da = 0.0
+        self.mx = 0.0
+        self.my = 0.0
+        self.x0 = 0.0
+        self.y0 = 0.0
         self.sinal1 = 0
         self.obstaculo = 0
         self.minpoint = INF
@@ -78,8 +83,8 @@ class Control():
 
         # defines the obstacle point more approximate
         if(hy < self.minpoint):
-            mx = self.ps[X]
-            my = self.ps[Y]
+            self.mx = self.ps[X]
+            self.my = self.ps[Y]
             self.minpoint = hy
         
         dy = abs(dy)
@@ -103,13 +108,13 @@ class Control():
         ar = np.arcsin(sin) * 180/ np.pi
 
         if(xr < self.ps[X]):
-            ar = 180 - ar
+            self.ar = 180 - self.ar
         if(yr < self.ps[Y]):
-            ar = -ar
-        self.da = ar - self.ps[A]
+           self.ar = -self.ar
+        self.da = self.ar - self.ps[A]
 
-        if(abs(self.ps[A]) > 90 and abs(ar) > 90):
-            if((ar > 0 and self.ps[A] < 0) or (ar < 0 and self.ps[A] > 0)):
+        if(abs(self.ps[A]) > 90 and abs(self.ar) > 90):
+            if((self.ar > 0 and self.ps[A] < 0) or (self.ar < 0 and self.ps[A] > 0)):
                 self.da = -self.da
 
         if self.estado == 0 and self.contador > 2:
@@ -158,8 +163,8 @@ def main():
     rospy.init_node('bug_tan')
 
 
-    xr = 20.0
-    yr = 30.0
+    xr = 5.0
+    yr = 5.0
     rate = rospy.Rate(10) # 10 Hz
     c = Control()
     vel = Twist()
@@ -170,7 +175,7 @@ def main():
         vel.linear.x = c.vel[X]
         c.pubSpeed.publish(vel)
 
-        rate.sleep()
+        #rate.sleep()
 
 
 if __name__ == "__main__":
